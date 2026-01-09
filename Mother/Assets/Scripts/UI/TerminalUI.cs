@@ -2,6 +2,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 
+private List<string> messageHistory = new List<string>();
+private const int MAX_HISTORY = 50;
+
 public class TerminalUI : MonoBehaviour
 {
     [Header("Main Components")]
@@ -217,6 +220,20 @@ public class TerminalUI : MonoBehaviour
                 hideKeyboardButton.gameObject.SetActive(true);
         }
     }
+
+
+
+    public void AddMessage(string message) {
+        messageHistory.Add(message);
+        if(messageHistory.Count > MAX_HISTORY) {
+            messageHistory.RemoveAt(0);
+        }
+        UpdateDisplay();
+    }
+    public void ClearConsole() {
+        messageHistory.Clear();
+        UpdateDisplay();
+    }
     
     public void HideMobileKeyboard()
     {
@@ -299,4 +316,5 @@ public class TerminalUI : MonoBehaviour
         
         terminalWindow.localScale = originalScale;
     }
+
 }

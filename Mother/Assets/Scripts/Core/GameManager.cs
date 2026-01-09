@@ -4,10 +4,11 @@ using System.Collections.Generic;
 
 public class GameManager : MonoBehaviour
 {
-    public static GameManager Instance;
+    public static GameManager Instance { get; private set; }
+    private int playerCredits = 1000;
+    private int currentDay = 1;
     
     [Header("Game State")]
-    public int currentDay = 1;
     public float gameTime = 9.0f;
     public float timeScale = 60f;
     public int playerMoney = 0;
@@ -23,6 +24,18 @@ public class GameManager : MonoBehaviour
     public UIManager uiManager;
     public MissionManager missionManager;
     public DialogueSystem dialogueSystem;
+
+    private void Awake() { Instance = this; }
+    private void Start() { StartNewDay(); }
+    public void StartNewDay() {
+        TerminalUI.Instance.AddMessage($"=== GIORNO {currentDay} ===");
+        MissionManager.Instance.GenerateDailyMissions();
+        TerminalUI.Instance.AddMessage("Digita 'missions' per vedere le missioni.");
+    }
+    public void CompleteMission(string missionId, int reward) {
+        playerCredits += reward;
+        EconomyUI.Instance.UpdateCreditDisplay(playerCredits);
+    }
     
     private void Awake()
     {
@@ -122,4 +135,5 @@ public class GameManager : MonoBehaviour
         if (missionManager == null) missionManager = FindObjectOfType<MissionManager>();
         if (dialogueSystem == null) dialogueSystem = FindObjectOfType<DialogueSystem>();
     }
+
 }

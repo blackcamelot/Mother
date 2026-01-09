@@ -148,6 +148,11 @@ public class AudioManager : MonoBehaviour
             StartCoroutine(ReturnSFXSource(source, sfx.clip.length));
         }
     }
+
+    public void PlaySFX(string soundName) {
+        AudioClip clip = soundLibrary.Find(s => s.name == soundName);
+        if(clip != null) sfxSource.PlayOneShot(clip);
+    }
     
     private System.Collections.IEnumerator ReturnSFXSource(AudioSource source, float delay)
     {
@@ -263,4 +268,5 @@ public class AudioManager : MonoBehaviour
     {
         Play("terminal_success");
     }
+
 }

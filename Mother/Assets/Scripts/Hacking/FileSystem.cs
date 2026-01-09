@@ -202,10 +202,25 @@ public class FileSystem : MonoBehaviour
     
     public string ChangeDirectory(string path)
     {
-        if(path == ".." || path == "../")
+        if (path == ".." || path == "../")
         {
-            if(currentDirectory != rootDirectory)
+            // Se non siamo alla root, torna al parent
+            if (currentDirectory != rootDirectory)
             {
+                // Troviamo il directory parent
+                string currentPath = currentDirectory.GetFullPath();
+                string parentPath = Path.GetDirectoryName(currentPath)?.Replace("\\", "/");
+            
+                if (!string.IsNullOrEmpty(parentPath))
+                {
+                    VirtualDirectory parentDir = GetDirectoryByPath(parentPath);
+                    if (parentDir != null)
+                    {
+                        currentDirectory = parentDir;
+                        return $"Changed to directory: {currentDirectory.GetFullPath()}";
+                    }
+                }
+            
                 currentDirectory = rootDirectory;
                 return $"Changed to directory: {currentDirectory.GetFullPath()}";
             }
@@ -214,25 +229,6 @@ public class FileSystem : MonoBehaviour
                 return "Already at root directory";
             }
         }
-        else
-        {
-            VirtualDirectory targetDir = GetDirectoryByPath(path);
-            if(targetDir != null)
-            {
-                if(targetDir.isLocked)
-                {
-                    return $"Access denied: Directory '{targetDir.name}' is locked";
-                }
-                
-                currentDirectory = targetDir;
-                return $"Changed to directory: {currentDirectory.GetFullPath()}";
-            }
-            else
-            {
-                return $"Directory not found: {path}";
-            }
-        }
-    }
     
     public string ReadFile(string filepath)
     {
@@ -259,6 +255,31 @@ public class FileSystem : MonoBehaviour
         }
         
         return $"File not found: {filepath}";
+    }
+
+    public VirtualFile GetFileByPath(string filepath)
+    {
+        if (string.IsNullOrEmpty(filepath))
+            return null;
+        
+        string directoryPath = Path.GetDirectoryName(filepath);
+    
+        // Controlla se è un file nella directory corrente
+        if (string.IsNullOrEmpty(directoryPath))
+        {
+        return currentDirectory.GetFile(filepath);
+        }
+    
+        directoryPath = directoryPath.Replace("\\", "/");
+        string filename = Path.GetFileName(filepath);
+    
+        VirtualDirectory dir = GetDirectoryByPath(directoryPath);
+        if (dir != null)
+        {
+            return dir.GetFile(filename);
+        }
+    
+        return null;
     }
     
     public string GetCurrentPath()

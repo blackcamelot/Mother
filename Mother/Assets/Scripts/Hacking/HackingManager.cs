@@ -1,10 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-private NetworkNode currentNode;
-private int currentAttempts;
-private float remainingTime;
-
 public class HackingManager : MonoBehaviour
 {
     public TerminalController terminal;
@@ -19,6 +15,11 @@ public class HackingManager : MonoBehaviour
     public bool hasPortScanner = true;
     public bool hasPasswordCracker = false;
     public bool hasFirewallBreacher = false;
+
+    // CORREZIONE PRINCIPALE: Dichiarazione delle variabili di stato DENTRO la classe
+    private int currentAttempts;
+    private float remainingTime;
+    private string currentNodePuzzleId; // Memorizza l'ID del nodo per il puzzle
     
     private void Start()
     {
@@ -106,10 +107,75 @@ public class HackingManager : MonoBehaviour
                     ScanPorts(currentNode.ipAddress);
                 break;
                 
+            case "solve": // Aggiunto comando per risolvere puzzle di hacking
+                if(parts.Length > 1)
+                    AttemptHack(parts[1]);
+                break;
+                
             default:
                 terminal.PrintLine($"Command not found: {cmd}");
                 break;
         }
+    }
+    
+    // CORREZIONE: Metodo per avviare un puzzle di hacking (da collegare con MissionManager)
+    public void StartHackingPuzzle(string nodeId) {
+        NetworkNode targetNode = networkNodes.Find(n => n.hostname == nodeId || n.ipAddress == nodeId);
+        if (targetNode == null)
+        {
+            Debug.LogWarning($"Node not found for hacking puzzle: {nodeId}");
+            terminal.PrintLine($"Node not found: {nodeId}");
+            return;
+        }
+
+        currentNodePuzzleId = nodeId;
+        currentAttempts = 0;
+        remainingTime = 60f;
+        terminal.PrintLine($"Hacking {nodeId}... Use 'solve [code]' to attempt. Time limit: 60s");
+        
+        // Avvia un timer (semplice) - in un'implementazione reale useresti una coroutine
+        // StartCoroutine(HackingTimer());
+    }
+
+    // CORREZIONE: Metodo per tentare la soluzione del puzzle
+    public bool AttemptHack(string solution) {
+        if (string.IsNullOrEmpty(currentNodePuzzleId))
+        {
+            terminal.PrintLine("No active hacking puzzle. Use a mission to start one.");
+            return false;
+        }
+
+        NetworkNode targetNode = networkNodes.Find(n => n.hostname == currentNodePuzzleId || n.ipAddress == currentNodePuzzleId);
+        if (targetNode == null)
+        {
+            terminal.PrintLine("Puzzle target no longer available.");
+            return false;
+        }
+
+        currentAttempts++;
+        
+        // Logica semplificata: il codice di sicurezza è l'ultimo ottetto dell'IP
+        string[] ipParts = targetNode.ipAddress.Split('.');
+        string correctCode = ipParts.Length == 4 ? ipParts[3] : "123";
+        
+        if(solution == correctCode) {
+            terminal.PrintLine("ACCESS GRANTED! System compromised.");
+            targetNode.isHacked = true;
+            
+            // Notifica il MissionManager se esiste
+            // MissionManager.Instance?.CompleteMission(currentNodePuzzleId);
+            
+            currentNodePuzzleId = null; // Resetta il puzzle
+            return true;
+        }
+        
+        terminal.PrintLine($"Incorrect code. Attempts: {currentAttempts}/3");
+        if (currentAttempts >= 3)
+        {
+            terminal.PrintLine("Maximum attempts reached. Hacking failed.");
+            currentNodePuzzleId = null;
+        }
+        return false;
     }
     
     private void ConnectToNode(string target)
@@ -220,7 +286,8 @@ public class HackingManager : MonoBehaviour
         crack [ip] - Crack password
         clear - Clear terminal
         whoami - Show user info
-        ports [ip] - Scan ports on target";
+        ports [ip] - Scan ports on target
+        solve [code] - Solve hacking puzzle (if active)";
         
         terminal.PrintLine(helpText);
     }
@@ -232,27 +299,6 @@ public class HackingManager : MonoBehaviour
             terminal.PrintLine(file.name);
         }
     }
-
-
-    public void StartHackingPuzzle(string nodeId) {
-        currentNode = NetworkNodeGenerator.Instance.GetNode(nodeId);
-        currentAttempts = 0;
-        remainingTime = 60f;
-        TerminalUI.Instance.AddMessage($"Hacking {nodeId}... Usa 'solve [codice]'");
-    }
-    public bool AttemptHack(string solution) {
-        currentAttempts++;
-        if(solution == currentNode.securityCode) {
-            TerminalUI.Instance.AddMessage("ACCESSO RIUSCITO!");
-            MissionManager.Instance.CompleteMission(currentNode.id);
-            return true;
-        }
-        TerminalUI.Instance.AddMessage($"Codice errato. Tentativi: {currentAttempts}/3");
-        return false;
-    }
-
-
-    
     
     private void ReadFile(string filename)
     {
@@ -290,5 +336,4 @@ public class HackingManager : MonoBehaviour
             }
         }
     }
-
 }

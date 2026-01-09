@@ -41,8 +41,35 @@ public static class NetworkNodeGenerator
         node.isFirewalled = Random.Range(0, 100) < (node.securityLevel * 10);
         node.isOnline = Random.Range(0, 100) < 90;
         
+        // Imposta un codice di sicurezza basato sull'IP (per i puzzle di hacking)
+        string[] ipParts = node.ipAddress.Split('.');
+        node.securityCode = ipParts.Length == 4 ? ipParts[3] : "123";
+        node.difficultyLevel = Mathf.CeilToInt(node.securityLevel / 2f);
+        node.isFirewallActive = node.isFirewalled;
+        
         node.CalculateDataValue();
         return node;
+    }
+
+    public static NetworkNode GetNode(string nodeId) {
+        // Nota: Questo è un metodo di utilità. In una implementazione reale,
+        // dovresti avere una lista di nodi generati da cui cercare.
+        // Per ora, crea un nodo fittizio con l'ID richiesto.
+        NetworkNode node = GenerateRandomNode();
+        node.id = nodeId;
+        node.hostname = nodeId;
+        return node;
+    }
+
+    private static string GenerateRandomCode()
+    {
+        const string chars = "0123456789ABCDEF";
+        StringBuilder code = new StringBuilder();
+        for(int i = 0; i < 4; i++)
+        {
+            code.Append(chars[Random.Range(0, chars.Length)]);
+        }
+        return code.ToString();
     }
     
     private static string GenerateIP()
@@ -245,17 +272,6 @@ public static class NetworkNodeGenerator
         
         return vulnerabilities;
     }
-
-    public NetworkNode GetNode(string nodeId) {
-        return new NetworkNode {
-            id = nodeId,
-            securityCode = GenerateRandomCode(),
-            difficultyLevel = 1,
-            isFirewallActive = true
-        };
-    }
-
-    
     
     private static string GenerateOwner(NodeType type)
     {
@@ -273,5 +289,4 @@ public static class NetworkNodeGenerator
                 return "Unknown";
         }
     }
-
 }

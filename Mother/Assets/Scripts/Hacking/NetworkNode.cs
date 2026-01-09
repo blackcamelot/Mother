@@ -6,8 +6,10 @@ using System.Text;
 [System.Serializable]
 public class NetworkNode
 {
+    // AGGIUNTA: Proprietà 'id' richiesta dal codice HackingManager
+    public string id;
     public string ipAddress;
-    public string securityCode;
+    public string securityCode; // Usata per i puzzle di hacking
     public int difficultyLevel;
     public bool isFirewallActive;
     public string hostname;
@@ -41,11 +43,15 @@ public class NetworkNode
     
     public NetworkNode()
     {
+        id = System.Guid.NewGuid().ToString().Substring(0, 8); // Genera un ID univoco di default
         files = new List<VirtualFile>();
         services = new List<NetworkService>();
         vulnerabilities = new List<Vulnerability>();
         openPorts = new List<int>();
     }
+    
+    
+}
     
     public string GetSystemInfo()
     {
@@ -198,5 +204,4 @@ public class Vulnerability
         Misconfiguration,
         WeakPassword
     }
-
 }

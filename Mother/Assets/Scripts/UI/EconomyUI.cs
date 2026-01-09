@@ -106,6 +106,12 @@ public class EconomyUI : MonoBehaviour
         // Default to crypto tab
         SwitchTab(0);
     }
+
+    public void UpdateCreditDisplay(int credits) {
+        creditText.text = $"CREDITI: {credits}";
+    }
+
+
     
     public void ToggleEconomyPanel()
     {
@@ -727,4 +733,5 @@ public class TradeRecordUI : MonoBehaviour
             default: return Color.gray;
         }
     }
+
 }

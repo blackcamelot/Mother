@@ -493,6 +493,15 @@ public class BlackMarket : MonoBehaviour
         
         SaveMarketData();
     }
+
+
+    public List<MarketItem> availableItems = new List<MarketItem>();
+    public void ShowMarket() {
+        TerminalUI.Instance.AddMessage("=== MERCATO NERO ===");
+        foreach(var item in availableItems) {
+            TerminalUI.Instance.AddMessage($"{item.name} - {item.price} crediti");
+        }
+    }
     
     public void UpdateMarketUI()
     {
@@ -587,4 +596,5 @@ public class BlackMarket : MonoBehaviour
         SaveMarketData();
         UpdateMarketUI();
     }
+
 }

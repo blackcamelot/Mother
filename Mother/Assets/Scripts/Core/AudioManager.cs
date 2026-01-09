@@ -148,11 +148,9 @@ public class AudioManager : MonoBehaviour
             StartCoroutine(ReturnSFXSource(source, sfx.clip.length));
         }
     }
-
-    public void PlaySFX(string soundName) {
-        AudioClip clip = soundLibrary.Find(s => s.name == soundName);
-        if(clip != null) sfxSource.PlayOneShot(clip);
-    }
+    
+    // CORREZIONE PRINCIPALE: Rimosso il metodo PlaySFX(string) duplicato e conflittuale.
+    // Se serve un metodo che accetta solo il nome, usa Play(string soundName) che esiste già.
     
     private System.Collections.IEnumerator ReturnSFXSource(AudioSource source, float delay)
     {
@@ -207,15 +205,17 @@ public class AudioManager : MonoBehaviour
     {
         if(musicSource != null)
         {
-            musicSource.volume = musicVolume * masterVolume;
+            // Applica il volume specifico del clip musicale, il volume master e il controllo musica
+            Sound currentMusic = sounds.Find(s => s.clip == musicSource.clip && s.isMusic);
+            float baseVolume = currentMusic != null ? currentMusic.volume : 1f;
+            musicSource.volume = baseVolume * masterVolume * musicVolume;
         }
         
         foreach(AudioSource source in activeSFXSources)
         {
-            if(source != null)
+            if(source != null && source.clip != null)
             {
-                string clipName = source.clip.name;
-                Sound sound = sounds.Find(s => s.clip.name == clipName);
+                Sound sound = sounds.Find(s => s.clip == source.clip);
                 if(sound != null)
                 {
                     source.volume = sound.volume * masterVolume * sfxVolume;
@@ -254,6 +254,7 @@ public class AudioManager : MonoBehaviour
         PlayerPrefs.Save();
     }
     
+    // Metodi di utilità per suoni comuni
     public void PlayButtonClick()
     {
         Play("ui_button");
@@ -268,5 +269,4 @@ public class AudioManager : MonoBehaviour
     {
         Play("terminal_success");
     }
-
 }

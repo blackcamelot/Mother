@@ -5,14 +5,14 @@ using System.Collections.Generic;
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
-    private int playerCredits = 1000;
-    private int currentDay = 1;
     
     [Header("Game State")]
     public float gameTime = 9.0f;
     public float timeScale = 60f;
     public int playerMoney = 0;
+    public int playerCredits = 1000;
     public int playerReputation = 0;
+    public int currentDay = 1;
     
     [Header("Player Skills")]
     public int hackingSkill = 1;
@@ -25,18 +25,6 @@ public class GameManager : MonoBehaviour
     public MissionManager missionManager;
     public DialogueSystem dialogueSystem;
 
-    private void Awake() { Instance = this; }
-    private void Start() { StartNewDay(); }
-    public void StartNewDay() {
-        TerminalUI.Instance.AddMessage($"=== GIORNO {currentDay} ===");
-        MissionManager.Instance.GenerateDailyMissions();
-        TerminalUI.Instance.AddMessage("Digita 'missions' per vedere le missioni.");
-    }
-    public void CompleteMission(string missionId, int reward) {
-        playerCredits += reward;
-        EconomyUI.Instance.UpdateCreditDisplay(playerCredits);
-    }
-    
     private void Awake()
     {
         if (Instance == null)
@@ -57,6 +45,18 @@ public class GameManager : MonoBehaviour
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
+    }
+    
+    private void Start()
+    {
+        FindReferences();
+        Debug.Log($"Starting Day {currentDay}");
+        
+        if (uiManager != null)
+        {
+            uiManager.ShowNotification($"Day {currentDay} - New missions available!");
+        }
+        // Nota: StartNewDay() viene chiamato da Update() quando gameTime >= 24
     }
     
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -111,6 +111,14 @@ public class GameManager : MonoBehaviour
             uiManager.UpdateMoneyDisplay(playerMoney);
         }
     }
+
+    public void AddCredits(int amount)
+    {
+        playerCredits += amount;
+        // Nota: EconomyUI.Instance non esiste nel codice corrente.
+        // Dovrai collegare l'UI dei crediti tramite UIManager o un riferimento diretto.
+        // Esempio: if(uiManager != null) uiManager.UpdateCreditDisplay(playerCredits);
+    }
     
     public void IncreaseSkill(string skill, int amount = 1)
     {
@@ -135,5 +143,4 @@ public class GameManager : MonoBehaviour
         if (missionManager == null) missionManager = FindObjectOfType<MissionManager>();
         if (dialogueSystem == null) dialogueSystem = FindObjectOfType<DialogueSystem>();
     }
-
 }

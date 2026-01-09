@@ -2,6 +2,16 @@ using UnityEngine;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 
+public void SaveGame() {
+    GameData data = new GameData {
+        playerCredits = GameManager.Instance.playerCredits,
+        currentDay = GameManager.Instance.currentDay,
+        completedMissions = MissionManager.Instance.GetCompletedMissions()
+    };
+    string json = JsonUtility.ToJson(data);
+    File.WriteAllText(GetSavePath(), json);
+}
+
 public static class SaveSystem
 {
     private static string savePath = Application.persistentDataPath + "/motherhacking.save";
@@ -65,4 +75,5 @@ public static class SaveSystem
             Debug.LogError("Save file not found!");
         }
     }
+
 }

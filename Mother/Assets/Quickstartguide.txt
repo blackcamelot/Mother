@@ -1,0 +1,96 @@
+QUICK START GUIDE - MOTHER HACKING SIMULATION
+=============================================
+
+1. PROJECT SETUP:
+   - Open Unity 2021.3 LTS or higher
+   - Create new 2D project
+   - Copy all provided scripts to Assets/Scripts/
+   - Create folder structure as shown in README
+
+2. SCENE SETUP - MAIN MENU:
+   - Create new scene "MainMenu"
+   - Create Canvas with MainMenuUI component
+   - Add buttons: New Game, Load, Settings, Credits, Quit
+   - Add background image
+   - Add AudioSource for menu music
+
+3. SCENE SETUP - GAMEPLAY:
+   - Create new scene "Gameplay"
+   - Create Canvas with UIManager component
+   - Create TerminalPanel with TerminalController
+   - Create GameManager GameObject
+   - Create HackingManager GameObject
+   - Add FileSystem component
+   - Add MissionManager component
+
+4. PREFABS TO CREATE:
+   - TerminalPanel.prefab (with TerminalUI, TerminalController)
+   - MissionEntry.prefab (for mission list)
+   - Notification.prefab (popup notifications)
+   - MobileKeyboard.prefab (virtual keyboard)
+
+5. UI CONFIGURATION:
+   - Use Canvas Scaler: Scale With Screen Size
+   - Reference: 1920x1080
+   - Screen Match Mode: 0.5
+   - Set up all button onClick events
+
+6. TESTING:
+   - Enter Play Mode
+   - Test terminal commands
+   - Verify mission generation
+   - Check file system navigation
+   - Test save/load functionality
+
+7. BUILD FOR ANDROID:
+   - File → Build Settings → Add scenes
+   - Select Android → Switch Platform
+   - Player Settings → Configure as per AndroidBuildConfig
+   - Build & Run on device
+
+TROUBLESHOOTING COMMON ISSUES:
+
+ISSUE: "NullReferenceException" in scripts
+FIX: Check Inspector references are assigned
+
+ISSUE: UI not scaling properly
+FIX: Adjust Canvas Scaler settings
+
+ISSUE: Commands not working
+FIX: Verify HackingManager has TerminalController reference
+
+ISSUE: Build fails
+FIX: Install Android SDK/NDK via Unity Hub
+
+ISSUE: Performance issues
+FIX: Reduce number of generated network nodes
+
+EXTENDING THE GAME:
+
+1. Add new commands:
+   - Edit CommandParser.cs
+   - Add to commandDatabase
+   - Implement in HackingManager.ExecuteCommand()
+
+2. Create new mission types:
+   - Extend MissionManager.cs
+   - Add new MissionType enum values
+   - Create new objective types
+
+3. Add graphics/sounds:
+   - Import to Assets/Resources/
+   - Reference in appropriate scripts
+   - Configure in AudioManager for sounds
+
+4. Implement minigames:
+   - Create new scene for minigame
+   - Load additively when needed
+   - Integrate with hacking mechanics
+
+SUPPORT:
+For issues, check:
+- Console for error messages
+- Inspector for missing references
+- Build settings for configuration
+
+ENJOY DEVELOPING!

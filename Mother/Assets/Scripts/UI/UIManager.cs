@@ -50,6 +50,12 @@ public class UIManager : MonoBehaviour
         missionManager = FindObjectOfType<MissionManager>();
         fileSystem = FindObjectOfType<FileSystem>();
         
+        // Verifica che tutti i componenti necessari esistano
+        if (gameManager == null)
+            Debug.LogError("GameManager non trovato!");
+        if (hackingManager == null)
+            Debug.LogWarning("HackingManager non trovato, alcune funzionalità saranno limitate");
+            
         InitializeUI();
         UpdateAllDisplays();
     }
@@ -211,26 +217,36 @@ public class UIManager : MonoBehaviour
         }
     }
     
+    private List<MissionUI> missionPool = new List<MissionUI>();
     private void UpdateMissionsDisplay()
     {
         if (missionContent == null || missionPrefab == null || missionManager == null)
             return;
             
-        // Clear existing mission displays
+        // Disabilita tutte le missioni esistenti
         foreach (Transform child in missionContent)
         {
-            Destroy(child.gameObject);
+            child.gameObject.SetActive(false);
         }
         
-        // Create new mission displays
-        foreach (var mission in missionManager.availableMissions)
+        // Riutilizza o crea nuove missioni UI
+        for (int i = 0; i < missionManager.availableMissions.Count; i++)
         {
-            GameObject missionObj = Instantiate(missionPrefab, missionContent);
-            MissionUI missionUI = missionObj.GetComponent<MissionUI>();
+            MissionUI missionUI;
+            if (i < missionContent.childCount)
+            {
+                missionUI = missionContent.GetChild(i).GetComponent<MissionUI>();
+                missionUI.gameObject.SetActive(true);
+            }
+            else
+            {
+                GameObject missionObj = Instantiate(missionPrefab, missionContent);
+                missionUI = missionObj.GetComponent<MissionUI>();
+            }
             
             if (missionUI != null)
             {
-                missionUI.Setup(mission, this);
+                missionUI.Setup(missionManager.availableMissions[i], this);
             }
         }
     }

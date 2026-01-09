@@ -2,11 +2,25 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 
-private List<string> messageHistory = new List<string>();
-private const int MAX_HISTORY = 50;
-
 public class TerminalUI : MonoBehaviour
 {
+    private List<string> messageHistory = new List<string>();
+    private const int MAX_HISTORY = 50;
+    
+    // Implementa singleton se necessario
+    public static TerminalUI Instance { get; private set; }
+    
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     [Header("Main Components")]
     public TerminalController terminalController;
     public CanvasGroup terminalCanvasGroup;
@@ -40,6 +54,8 @@ public class TerminalUI : MonoBehaviour
     public GameObject quickCommandsPanel;
     public List<Button> quickCommandButtons;
     
+    }
+
     private Dictionary<string, string> quickCommands = new Dictionary<string, string>()
     {
         {"scan", "scan"},
@@ -110,6 +126,33 @@ public class TerminalUI : MonoBehaviour
             hideKeyboardButton.gameObject.SetActive(false);
         }
     }
+
+
+    public void AddMessage(string message) 
+    {
+        messageHistory.Add(message);
+        if (messageHistory.Count > MAX_HISTORY) 
+        {
+            messageHistory.RemoveAt(0);
+        }
+        UpdateDisplay();
+    }
+    
+    public void ClearConsole() 
+    {
+        messageHistory.Clear();
+        UpdateDisplay();
+    }
+    
+    private void UpdateDisplay()
+    {
+        // Implementa l'aggiornamento della UI
+        if (terminalController != null && terminalController.terminalOutput != null)
+        {
+            terminalController.terminalOutput.text = string.Join("\n", messageHistory);
+        }
+    }
+
     
     private void Update()
     {
@@ -206,6 +249,23 @@ public class TerminalUI : MonoBehaviour
             }
         }
     }
+
+    public void ProcessInput()
+    {
+        // Implementa la logica per processare l'input
+        if (terminalController != null)
+        {
+            terminalController.OnCommandEntered(terminalController.commandInput.text);
+        }
+    }
+    
+    public void AppendToInput(string text)
+    {
+        if (terminalController != null && terminalController.commandInput != null)
+        {
+            terminalController.commandInput.text += text;
+        }
+    }
     
     public void ShowMobileKeyboard()
     {
@@ -219,20 +279,6 @@ public class TerminalUI : MonoBehaviour
             if(hideKeyboardButton != null)
                 hideKeyboardButton.gameObject.SetActive(true);
         }
-    }
-
-
-
-    public void AddMessage(string message) {
-        messageHistory.Add(message);
-        if(messageHistory.Count > MAX_HISTORY) {
-            messageHistory.RemoveAt(0);
-        }
-        UpdateDisplay();
-    }
-    public void ClearConsole() {
-        messageHistory.Clear();
-        UpdateDisplay();
     }
     
     public void HideMobileKeyboard()
@@ -316,5 +362,4 @@ public class TerminalUI : MonoBehaviour
         
         terminalWindow.localScale = originalScale;
     }
-
 }

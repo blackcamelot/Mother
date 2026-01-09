@@ -1,102 +1,161 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System;
+using System.Collections;
 
 public class GameInitializer : MonoBehaviour
 {
-    [Header("Initialization Settings")]
-    public bool initializeOnStart = true;
-    public string firstSceneName = "MainMenu";
+    [Header("Configurazione")]
+    [SerializeField] private string firstSceneName = "MainMenu";
+    [SerializeField] private float minLoadTime = 1.5f; // Tempo minimo per evitare flash
     
-    [Header("Prefabs to Instantiate")]
-    public GameObject gameManagerPrefab;
-    public GameObject audioManagerPrefab;
-    public GameObject sceneCleanupPrefab;
+    [Header("UI")]
+    [SerializeField] private GameObject loadingScreen;
+    [SerializeField] private UnityEngine.UI.Slider progressBar;
+    [SerializeField] private UnityEngine.UI.Text progressText;
+    
+    public static event Action OnGameInitialized;
     
     private void Start()
     {
-        if (initializeOnStart)
-        {
-            InitializeGame();
-        }
-    }
-    
-    public void InitializeGame()
-    {
-        Debug.Log("Initializing game systems...");
-        
-        // Ensure GameManager exists
-        if (GameManager.Instance == null && gameManagerPrefab != null)
-        {
-            Instantiate(gameManagerPrefab);
-            Debug.Log("GameManager instantiated");
-        }
-        
-        // Ensure AudioManager exists
-        if (AudioManager.Instance == null && audioManagerPrefab != null)
-        {
-            Instantiate(audioManagerPrefab);
-            Debug.Log("AudioManager instantiated");
-        }
-        
-        // Ensure SceneCleanup exists
-        if (sceneCleanupPrefab != null)
-        {
-            SceneCleanup existingCleanup = FindObjectOfType<SceneCleanup>();
-            if (existingCleanup == null)
-            {
-                Instantiate(sceneCleanupPrefab);
-                Debug.Log("SceneCleanup instantiated");
-            }
-        }
-        
-        // Load first scene if not already loaded
-        if (!string.IsNullOrEmpty(firstSceneName) && 
-            SceneManager.GetActiveScene().name != firstSceneName)
-        {
-            SceneManager.LoadScene(firstSceneName);
-        }
-        
-        Debug.Log("Game initialization complete");
-    }
-    
-    public void ResetGame()
-    {
-        Debug.Log("Resetting game...");
-        
-        // Destroy existing managers
-        GameManager gameManager = FindObjectOfType<GameManager>();
-        if (gameManager != null)
-        {
-            Destroy(gameManager.gameObject);
-        }
-        
-        AudioManager audioManager = FindObjectOfType<AudioManager>();
-        if (audioManager != null)
-        {
-            Destroy(audioManager.gameObject);
-        }
-        
-        // Re-initialize
         InitializeGame();
     }
-    
-    public void QuitToMainMenu()
+
+    private void InitializeGame()
     {
-        SceneManager.LoadScene("MainMenu");
+        StartCoroutine(InitializeGameRoutine());
+    }
+
+    private IEnumerator InitializeGameRoutine()
+    {
+        float startTime = Time.time;
         
-        // Clean up gameplay objects
-        HackingManager hackingManager = FindObjectOfType<HackingManager>();
-        if (hackingManager != null)
+        // Mostra loading screen se disponibile
+        if (loadingScreen != null)
+            loadingScreen.SetActive(true);
+        
+        // Fase 1: Inizializza sistemi base
+        yield return InitializeCoreSystems();
+        UpdateProgress(0.3f, "Inizializzazione sistemi...");
+        
+        // Fase 2: Carica dati salvati
+        yield return LoadSavedData();
+        UpdateProgress(0.6f, "Caricamento dati...");
+        
+        // Fase 3: Verifica integrità
+        yield return VerifyGameIntegrity();
+        UpdateProgress(0.9f, "Verifica integrità...");
+        
+        // Attendi tempo minimo
+        float elapsedTime = Time.time - startTime;
+        if (elapsedTime < minLoadTime)
         {
-            Destroy(hackingManager.gameObject);
+            yield return new WaitForSeconds(minLoadTime - elapsedTime);
         }
         
-        UIManager uiManager = FindObjectOfType<UIManager>();
-        if (uiManager != null)
+        UpdateProgress(1f, "Completato!");
+        yield return new WaitForSeconds(0.5f);
+        
+        // Notifica completamento
+        OnGameInitialized?.Invoke();
+        
+        // Carica scena iniziale
+        LoadFirstScene();
+    }
+
+    private IEnumerator InitializeCoreSystems()
+    {
+        try
         {
-            Destroy(uiManager.gameObject);
+            // Inizializza AudioManager se presente
+            AudioManager audioManager = FindObjectOfType<AudioManager>();
+            if (audioManager == null)
+            {
+                GameObject audioObj = new GameObject("AudioManager");
+                audioObj.AddComponent<AudioManager>();
+                DontDestroyOnLoad(audioObj);
+            }
+            
+            // Inizializza altri sistemi...
+            
+            yield return null;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Errore inizializzazione sistemi: {e.Message}");
+            throw;
+        }
+    }
+
+    private IEnumerator LoadSavedData()
+    {
+        try
+        {
+            // Carica dati salvati
+            SaveSystem saveSystem = FindObjectOfType<SaveSystem>();
+            if (saveSystem != null)
+            {
+                yield return saveSystem.LoadGameAsync();
+            }
+            
+            yield return null;
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"Errore caricamento dati: {e.Message}");
+            // Continua comunque con valori di default
+        }
+    }
+
+    private IEnumerator VerifyGameIntegrity()
+    {
+        // Verifica che le scene esistano
+        if (!SceneExists(firstSceneName))
+        {
+            Debug.LogError($"Scena iniziale non trovata: {firstSceneName}");
+            // Potresti voler gestire questo errore diversamente
         }
         
-        Debug.Log("Returned to main menu");
+        // Altre verifiche...
+        
+        yield return null;
+    }
+
+    private bool SceneExists(string sceneName)
+    {
+        #if UNITY_EDITOR
+        foreach (UnityEditor.EditorBuildSettingsScene scene in UnityEditor.EditorBuildSettings.scenes)
+        {
+            if (scene.path.Contains(sceneName))
+            {
+                return true;
+            }
+        }
+        #endif
+        return true; // Per build, assumi che esista
+    }
+
+    private void UpdateProgress(float progress, string message)
+    {
+        if (progressBar != null)
+            progressBar.value = progress;
+        
+        if (progressText != null)
+            progressText.text = $"{message} {(progress * 100):F0}%";
+    }
+
+    private void LoadFirstScene()
+    {
+        if (loadingScreen != null)
+            loadingScreen.SetActive(false);
+        
+        SceneManager.LoadScene(firstSceneName);
+    }
+
+    // Metodo pubblico per riavviare l'inizializzazione
+    public void RestartInitialization()
+    {
+        StopAllCoroutines();
+        StartCoroutine(InitializeGameRoutine());
     }
 }

@@ -1,146 +1,238 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using System;
 using System.Collections.Generic;
+
+public enum GameState
+{
+    Initializing,
+    MainMenu,
+    Playing,
+    Paused,
+    GameOver,
+    Loading
+}
 
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
     
-    [Header("Game State")]
-    public float gameTime = 9.0f;
-    public float timeScale = 60f;
-    public int playerMoney = 0;
-    public int playerCredits = 1000;
-    public int playerReputation = 0;
-    public int currentDay = 1;
+    [Header("Configurazione")]
+    [SerializeField] private int targetFrameRate = 60;
+    [SerializeField] private bool vSyncEnabled = false;
     
-    [Header("Player Skills")]
-    public int hackingSkill = 1;
-    public int programmingSkill = 1;
-    public int socialEngineeringSkill = 1;
+    [Header("Stato corrente")]
+    [SerializeField] private GameState currentState = GameState.Initializing;
+    private GameState previousState;
     
-    [Header("References")]
-    public HackingManager hackingManager;
-    public UIManager uiManager;
-    public MissionManager missionManager;
-    public DialogueSystem dialogueSystem;
-
+    // Eventi
+    public static event Action<GameState, GameState> OnGameStateChanged;
+    public static event Action OnGameStarted;
+    public static event Action OnGamePaused;
+    public static event Action OnGameResumed;
+    public static event Action OnGameOver;
+    
+    // Dati di gioco
+    private int currentScore = 0;
+    private int highScore = 0;
+    private float playTime = 0f;
+    
+    private const string HIGH_SCORE_KEY = "HighScore";
+    
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-            SceneManager.sceneLoaded += OnSceneLoaded;
-        }
-        else
+        // Singleton pattern thread-safe
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
         }
+        
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+        
+        Initialize();
+    }
+    
+    private void Initialize()
+    {
+        // Configura qualità
+        Application.targetFrameRate = targetFrameRate;
+        QualitySettings.vSyncCount = vSyncEnabled ? 1 : 0;
+        
+        // Carica high score
+        highScore = PlayerPrefs.GetInt(HIGH_SCORE_KEY, 0);
+        
+        // Stato iniziale
+        ChangeState(GameState.MainMenu);
+    }
+    
+    private void Update()
+    {
+        // Aggiorna timer di gioco
+        if (currentState == GameState.Playing)
+        {
+            playTime += Time.deltaTime;
+        }
+        
+        // Gestione input globale (es: Escape per pausa)
+        HandleGlobalInput();
+    }
+    
+    private void HandleGlobalInput()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            switch (currentState)
+            {
+                case GameState.Playing:
+                    PauseGame();
+                    break;
+                case GameState.Paused:
+                    ResumeGame();
+                    break;
+            }
+        }
+    }
+    
+    public void ChangeState(GameState newState)
+    {
+        if (currentState == newState) return;
+        
+        previousState = currentState;
+        currentState = newState;
+        
+        Debug.Log($"Cambio stato: {previousState} -> {currentState}");
+        
+        // Gestisci transizioni di stato
+        HandleStateTransition(previousState, newState);
+        
+        // Notifica listeners
+        OnGameStateChanged?.Invoke(previousState, newState);
+    }
+    
+    private void HandleStateTransition(GameState fromState, GameState toState)
+    {
+        switch (toState)
+        {
+            case GameState.Playing:
+                if (fromState == GameState.Paused)
+                {
+                    Time.timeScale = 1f;
+                    OnGameResumed?.Invoke();
+                }
+                else
+                {
+                    OnGameStarted?.Invoke();
+                }
+                break;
+                
+            case GameState.Paused:
+                Time.timeScale = 0f;
+                OnGamePaused?.Invoke();
+                break;
+                
+            case GameState.GameOver:
+                Time.timeScale = 0f;
+                SaveHighScore();
+                OnGameOver?.Invoke();
+                break;
+                
+            case GameState.MainMenu:
+                Time.timeScale = 1f;
+                ResetGameData();
+                break;
+        }
+    }
+    
+    // Metodi pubblici per controllo gioco
+    public void StartGame()
+    {
+        ChangeState(GameState.Playing);
+    }
+    
+    public void PauseGame()
+    {
+        ChangeState(GameState.Paused);
+    }
+    
+    public void ResumeGame()
+    {
+        ChangeState(GameState.Playing);
+    }
+    
+    public void GameOver()
+    {
+        ChangeState(GameState.GameOver);
+    }
+    
+    public void ReturnToMainMenu()
+    {
+        ChangeState(GameState.MainMenu);
+        UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
+    }
+    
+    // Gestione punteggio
+    public void AddScore(int points)
+    {
+        if (currentState != GameState.Playing) return;
+        
+        currentScore += points;
+        if (currentScore > highScore)
+        {
+            highScore = currentScore;
+        }
+    }
+    
+    public void ResetScore()
+    {
+        currentScore = 0;
+    }
+    
+    private void SaveHighScore()
+    {
+        if (currentScore > PlayerPrefs.GetInt(HIGH_SCORE_KEY, 0))
+        {
+            PlayerPrefs.SetInt(HIGH_SCORE_KEY, currentScore);
+            PlayerPrefs.Save();
+        }
+    }
+    
+    private void ResetGameData()
+    {
+        currentScore = 0;
+        playTime = 0f;
+    }
+    
+    // Properties
+    public GameState CurrentState => currentState;
+    public GameState PreviousState => previousState;
+    public int CurrentScore => currentScore;
+    public int HighScore => highScore;
+    public float PlayTime => playTime;
+    
+    // Metodo per ripristinare stato precedente
+    public void RestorePreviousState()
+    {
+        ChangeState(previousState);
     }
     
     private void OnDestroy()
     {
         if (Instance == this)
         {
-            SceneManager.sceneLoaded -= OnSceneLoaded;
-        }
-    }
-    
-    private void Start()
-    {
-        FindReferences();
-        Debug.Log($"Starting Day {currentDay}");
-        
-        if (uiManager != null)
-        {
-            uiManager.ShowNotification($"Day {currentDay} - New missions available!");
-        }
-        // Nota: StartNewDay() viene chiamato da Update() quando gameTime >= 24
-    }
-    
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        FindReferences();
-    }
-    
-    private void FindReferences()
-    {
-        hackingManager = FindObjectOfType<HackingManager>();
-        uiManager = FindObjectOfType<UIManager>();
-        missionManager = FindObjectOfType<MissionManager>();
-        dialogueSystem = FindObjectOfType<DialogueSystem>();
-    }
-    
-    private void Update()
-    {
-        if (hackingManager != null)
-        {
-            gameTime += Time.deltaTime / 60f * timeScale;
+            Instance = null;
             
-            if (gameTime >= 24f)
-            {
-                gameTime = 0f;
-                currentDay++;
-                StartNewDay();
-            }
+            // Salva dati quando il gioco viene chiuso
+            SaveHighScore();
         }
     }
     
-    private void StartNewDay()
+    #if UNITY_EDITOR
+    private void OnValidate()
     {
-        Debug.Log($"Starting Day {currentDay}");
-        
-        if (missionManager != null)
-        {
-            missionManager.GenerateNewMissions();
-        }
-        
-        if (uiManager != null)
-        {
-            uiManager.ShowNotification($"Day {currentDay} - New missions available!");
-        }
+        // Validazione in Editor
+        if (targetFrameRate < 30) targetFrameRate = 30;
+        if (targetFrameRate > 144) targetFrameRate = 144;
     }
-    
-    public void AddMoney(int amount)
-    {
-        playerMoney += amount;
-        
-        if (uiManager != null)
-        {
-            uiManager.UpdateMoneyDisplay(playerMoney);
-        }
-    }
-
-    public void AddCredits(int amount)
-    {
-        playerCredits += amount;
-        // Nota: EconomyUI.Instance non esiste nel codice corrente.
-        // Dovrai collegare l'UI dei crediti tramite UIManager o un riferimento diretto.
-        // Esempio: if(uiManager != null) uiManager.UpdateCreditDisplay(playerCredits);
-    }
-    
-    public void IncreaseSkill(string skill, int amount = 1)
-    {
-        switch(skill.ToLower())
-        {
-            case "hacking":
-                hackingSkill += amount;
-                break;
-            case "programming":
-                programmingSkill += amount;
-                break;
-            case "social":
-                socialEngineeringSkill += amount;
-                break;
-        }
-    }
-    
-    public void ClearNullReferences()
-    {
-        if (hackingManager == null) hackingManager = FindObjectOfType<HackingManager>();
-        if (uiManager == null) uiManager = FindObjectOfType<UIManager>();
-        if (missionManager == null) missionManager = FindObjectOfType<MissionManager>();
-        if (dialogueSystem == null) dialogueSystem = FindObjectOfType<DialogueSystem>();
-    }
+    #endif
 }

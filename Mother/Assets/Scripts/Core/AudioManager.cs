@@ -1,10 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.Linq;
+using System;
 
 public class AudioManager : MonoBehaviour
 {
-    public static AudioManager Instance;
+    public static AudioManager Instance { get; private set; }
     
     [System.Serializable]
     public class Sound
@@ -12,261 +12,169 @@ public class AudioManager : MonoBehaviour
         public string name;
         public AudioClip clip;
         public bool loop = false;
-        public bool isMusic = false;
-        
-        [Range(0f, 1f)]
-        public float volume = 1f;
-        
-        [Range(0.1f, 3f)]
-        public float pitch = 1f;
+        [Range(0f, 1f)] public float volume = 1f;
+        [Range(0.1f, 3f)] public float pitch = 1f;
         
         [HideInInspector]
         public AudioSource source;
     }
+
+    [SerializeField] private Sound[] sounds;
+    private Dictionary<string, Sound> soundDictionary;
     
-    [Header("Audio Settings")]
-    public List<Sound> sounds = new List<Sound>();
+    [SerializeField, Range(0f, 1f)] 
+    private float masterVolume = 1f;
     
-    [Header("Volume Controls")]
-    [Range(0f, 1f)]
-    public float masterVolume = 1f;
-    [Range(0f, 1f)]
-    public float musicVolume = 0.7f;
-    [Range(0f, 1f)]
-    public float sfxVolume = 0.8f;
-    
-    [Header("Audio Sources")]
-    public int maxConcurrentSFX = 10;
-    
-    private Dictionary<string, Sound> soundDictionary = new Dictionary<string, Sound>();
-    private Queue<AudioSource> availableSFXSources = new Queue<AudioSource>();
-    private List<AudioSource> activeSFXSources = new List<AudioSource>();
-    private AudioSource musicSource;
-    
+    private const string VOLUME_KEY = "MasterVolume";
+
     private void Awake()
     {
-        if(Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-            InitializeAudioSources();
-            LoadVolumeSettings();
-        }
-        else
+        // Implementazione Singleton robusta
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
             return;
         }
+        
+        Instance = this;
+        DontDestroyOnLoad(gameObject); // Persistenza tra scene
+        
+        InitializeAudioManager();
     }
-    
-    private void InitializeAudioSources()
+
+    private void InitializeAudioManager()
     {
-        GameObject musicObject = new GameObject("MusicSource");
-        musicObject.transform.parent = transform;
-        musicSource = musicObject.AddComponent<AudioSource>();
-        musicSource.loop = true;
-        musicSource.playOnAwake = false;
+        // Carica volume salvato
+        masterVolume = PlayerPrefs.GetFloat(VOLUME_KEY, 0.7f);
         
-        for(int i = 0; i < maxConcurrentSFX; i++)
-        {
-            GameObject sfxObject = new GameObject($"SFXSource_{i}");
-            sfxObject.transform.parent = transform;
-            AudioSource source = sfxObject.AddComponent<AudioSource>();
-            source.playOnAwake = false;
-            availableSFXSources.Enqueue(source);
-        }
+        // Inizializza dizionario
+        soundDictionary = new Dictionary<string, Sound>();
         
-        foreach(Sound sound in sounds)
+        // Crea AudioSource per ogni suono
+        foreach (Sound sound in sounds)
         {
-            soundDictionary[sound.name] = sound;
-            
-            if(sound.isMusic)
+            if (string.IsNullOrEmpty(sound.name) || sound.clip == null)
             {
-                sound.source = musicSource;
+                Debug.LogWarning($"AudioManager: Sound config invalida - nome: {sound.name}");
+                continue;
             }
+            
+            if (soundDictionary.ContainsKey(sound.name))
+            {
+                Debug.LogWarning($"AudioManager: Duplicato nome sound: {sound.name}");
+                continue;
+            }
+            
+            GameObject soundObject = new GameObject($"Sound_{sound.name}");
+            soundObject.transform.SetParent(transform);
+            
+            AudioSource source = soundObject.AddComponent<AudioSource>();
+            source.clip = sound.clip;
+            source.volume = sound.volume * masterVolume;
+            source.pitch = sound.pitch;
+            source.loop = sound.loop;
+            source.playOnAwake = false;
+            
+            sound.source = source;
+            soundDictionary[sound.name] = sound;
         }
+        
+        Debug.Log($"AudioManager inizializzato con {soundDictionary.Count} suoni");
     }
-    
-    private void Update()
-    {
-        UpdateVolumes();
-        CleanupFinishedSFX();
-    }
-    
+
     public void Play(string soundName)
     {
-        if(soundDictionary.ContainsKey(soundName))
+        if (!soundDictionary.TryGetValue(soundName, out Sound sound))
         {
-            Sound sound = soundDictionary[soundName];
-            
-            if(sound.isMusic)
-            {
-                PlayMusic(sound);
-            }
-            else
-            {
-                PlaySFX(sound);
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"Sound not found: {soundName}");
-        }
-    }
-    
-    private void PlayMusic(Sound music)
-    {
-        if(musicSource.isPlaying)
-            musicSource.Stop();
-            
-        musicSource.clip = music.clip;
-        musicSource.volume = music.volume * masterVolume * musicVolume;
-        musicSource.pitch = music.pitch;
-        musicSource.loop = music.loop;
-        musicSource.Play();
-    }
-    
-    private void PlaySFX(Sound sfx)
-    {
-        if(availableSFXSources.Count == 0)
-        {
-            Debug.LogWarning("No available SFX sources!");
+            Debug.LogWarning($"AudioManager: Sound non trovato - {soundName}");
             return;
         }
         
-        AudioSource source = availableSFXSources.Dequeue();
-        activeSFXSources.Add(source);
-        
-        source.clip = sfx.clip;
-        source.volume = sfx.volume * masterVolume * sfxVolume;
-        source.pitch = sfx.pitch;
-        source.loop = sfx.loop;
-        source.Play();
-        
-        if(!sfx.loop)
+        if (sound.source == null)
         {
-            StartCoroutine(ReturnSFXSource(source, sfx.clip.length));
+            Debug.LogError($"AudioManager: AudioSource null per - {soundName}");
+            return;
+        }
+        
+        sound.source.Play();
+    }
+
+    public void Stop(string soundName)
+    {
+        if (soundDictionary.TryGetValue(soundName, out Sound sound))
+        {
+            sound.source.Stop();
         }
     }
-    
-    // CORREZIONE PRINCIPALE: Rimosso il metodo PlaySFX(string) duplicato e conflittuale.
-    // Se serve un metodo che accetta solo il nome, usa Play(string soundName) che esiste già.
-    
-    private System.Collections.IEnumerator ReturnSFXSource(AudioSource source, float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        
-        if(source != null)
-        {
-            source.Stop();
-            activeSFXSources.Remove(source);
-            availableSFXSources.Enqueue(source);
-        }
-    }
-    
-    public void StopMusic()
-    {
-        if(musicSource.isPlaying)
-            musicSource.Stop();
-    }
-    
-    public void StopAllSFX()
-    {
-        foreach(AudioSource source in activeSFXSources.ToList())
-        {
-            source.Stop();
-            activeSFXSources.Remove(source);
-            availableSFXSources.Enqueue(source);
-        }
-    }
-    
+
     public void SetMasterVolume(float volume)
     {
         masterVolume = Mathf.Clamp01(volume);
-        UpdateVolumes();
-        SaveVolumeSettings();
-    }
-    
-    public void SetMusicVolume(float volume)
-    {
-        musicVolume = Mathf.Clamp01(volume);
-        UpdateVolumes();
-        SaveVolumeSettings();
-    }
-    
-    public void SetSFXVolume(float volume)
-    {
-        sfxVolume = Mathf.Clamp01(volume);
-        UpdateVolumes();
-        SaveVolumeSettings();
-    }
-    
-    private void UpdateVolumes()
-    {
-        if(musicSource != null)
+        
+        // Aggiorna volume di tutti i suoni
+        foreach (Sound sound in soundDictionary.Values)
         {
-            // Applica il volume specifico del clip musicale, il volume master e il controllo musica
-            Sound currentMusic = sounds.Find(s => s.clip == musicSource.clip && s.isMusic);
-            float baseVolume = currentMusic != null ? currentMusic.volume : 1f;
-            musicSource.volume = baseVolume * masterVolume * musicVolume;
+            if (sound.source != null)
+            {
+                sound.source.volume = sound.volume * masterVolume;
+            }
         }
         
-        foreach(AudioSource source in activeSFXSources)
-        {
-            if(source != null && source.clip != null)
-            {
-                Sound sound = sounds.Find(s => s.clip == source.clip);
-                if(sound != null)
-                {
-                    source.volume = sound.volume * masterVolume * sfxVolume;
-                }
-            }
-        }
-    }
-    
-    private void CleanupFinishedSFX()
-    {
-        for(int i = activeSFXSources.Count - 1; i >= 0; i--)
-        {
-            AudioSource source = activeSFXSources[i];
-            
-            if(source != null && !source.isPlaying && !source.loop)
-            {
-                source.Stop();
-                activeSFXSources.RemoveAt(i);
-                availableSFXSources.Enqueue(source);
-            }
-        }
-    }
-    
-    private void LoadVolumeSettings()
-    {
-        masterVolume = PlayerPrefs.GetFloat("MasterVolume", 1f);
-        musicVolume = PlayerPrefs.GetFloat("MusicVolume", 0.7f);
-        sfxVolume = PlayerPrefs.GetFloat("SFXVolume", 0.8f);
-    }
-    
-    private void SaveVolumeSettings()
-    {
-        PlayerPrefs.SetFloat("MasterVolume", masterVolume);
-        PlayerPrefs.SetFloat("MusicVolume", musicVolume);
-        PlayerPrefs.SetFloat("SFXVolume", sfxVolume);
+        // Salva preferenza
+        PlayerPrefs.SetFloat(VOLUME_KEY, masterVolume);
         PlayerPrefs.Save();
     }
-    
-    // Metodi di utilità per suoni comuni
-    public void PlayButtonClick()
+
+    public float GetMasterVolume() => masterVolume;
+
+    // Metodi per gestione avanzata
+    public void PlayOneShot(string soundName)
     {
-        Play("ui_button");
+        if (soundDictionary.TryGetValue(soundName, out Sound sound) && sound.source != null)
+        {
+            sound.source.PlayOneShot(sound.clip, sound.volume * masterVolume);
+        }
     }
-    
-    public void PlayTerminalTyping()
+
+    public void PauseAll()
     {
-        Play("terminal_type");
+        foreach (Sound sound in soundDictionary.Values)
+        {
+            if (sound.source != null && sound.source.isPlaying)
+            {
+                sound.source.Pause();
+            }
+        }
     }
-    
-    public void PlayHackSuccess()
+
+    public void ResumeAll()
     {
-        Play("terminal_success");
+        foreach (Sound sound in soundDictionary.Values)
+        {
+            if (sound.source != null && !sound.source.isPlaying)
+            {
+                sound.source.UnPause();
+            }
+        }
+    }
+
+    public void StopAll()
+    {
+        foreach (Sound sound in soundDictionary.Values)
+        {
+            if (sound.source != null)
+            {
+                sound.source.Stop();
+            }
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            StopAll();
+            Instance = null;
+        }
     }
 }

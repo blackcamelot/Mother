@@ -7,6 +7,9 @@ using System.Text;
 public class NetworkNode
 {
     public string ipAddress;
+    public string securityCode;
+    public int difficultyLevel;
+    public bool isFirewallActive;
     public string hostname;
     public string domain;
     public int securityLevel;
@@ -195,4 +198,5 @@ public class Vulnerability
         Misconfiguration,
         WeakPassword
     }
+
 }

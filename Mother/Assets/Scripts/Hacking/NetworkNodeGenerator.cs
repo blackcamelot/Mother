@@ -1,292 +1,127 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.Text;
 
-public static class NetworkNodeGenerator
+namespace SistemaHacking
 {
-    public enum NodeType
+    public class GeneratoreNodi
     {
-        PersonalComputer,
-        CorporateServer,
-        GovernmentServer,
-        BankServer,
-        WebServer,
-        DatabaseServer,
-        Router,
-        Firewall,
-        IoTDevice,
-        MobileDevice
-    }
-    
-    private static string[] personalNames = {"john", "sarah", "mike", "lisa", "david", "emma"};
-    private static string[] corporateNames = {"corp", "inc", "llc", "ltd", "enterprises"};
-    private static string[] domains = {"com", "org", "net", "edu", "gov", "io"};
-    
-    public static NetworkNode GenerateRandomNode(NodeType type = NodeType.PersonalComputer)
-    {
-        NetworkNode node = new NetworkNode();
-        
-        node.nodeType = (NetworkNode.NodeType)type;
-        node.ipAddress = GenerateIP();
-        node.hostname = GenerateHostname(type);
-        node.domain = GenerateDomain();
-        node.securityLevel = GetBaseSecurityLevel(type) + Random.Range(-2, 3);
-        node.securityLevel = Mathf.Clamp(node.securityLevel, 1, 10);
-        node.password = GeneratePassword(Random.Range(6, 12));
-        node.openPorts = GenerateOpenPorts(type);
-        node.services = GenerateServices(node.openPorts);
-        node.files = GenerateFiles(type);
-        node.vulnerabilities = GenerateVulnerabilities(type, node.securityLevel);
-        node.owner = GenerateOwner(type);
-        node.isFirewalled = Random.Range(0, 100) < (node.securityLevel * 10);
-        node.isOnline = Random.Range(0, 100) < 90;
-        
-        // Imposta un codice di sicurezza basato sull'IP (per i puzzle di hacking)
-        string[] ipParts = node.ipAddress.Split('.');
-        node.securityCode = ipParts.Length == 4 ? ipParts[3] : "123";
-        node.difficultyLevel = Mathf.CeilToInt(node.securityLevel / 2f);
-        node.isFirewallActive = node.isFirewalled;
-        
-        node.CalculateDataValue();
-        return node;
-    }
-
-    public static NetworkNode GetNode(string nodeId) {
-        // Nota: Questo è un metodo di utilità. In una implementazione reale,
-        // dovresti avere una lista di nodi generati da cui cercare.
-        // Per ora, crea un nodo fittizio con l'ID richiesto.
-        NetworkNode node = GenerateRandomNode();
-        node.id = nodeId;
-        node.hostname = nodeId;
-        return node;
-    }
-
-    private static string GenerateRandomCode()
-    {
-        const string chars = "0123456789ABCDEF";
-        StringBuilder code = new StringBuilder();
-        for(int i = 0; i < 4; i++)
+        public List<NodoRete> GeneraRete(
+            GestoreHacking.ConfigurazioneDifficolta configurazione,
+            GameObject prefabNodo,
+            Transform contenitore)
         {
-            code.Append(chars[Random.Range(0, chars.Length)]);
-        }
-        return code.ToString();
-    }
-    
-    private static string GenerateIP()
-    {
-        return $"{Random.Range(10, 255)}.{Random.Range(0, 255)}.{Random.Range(0, 255)}.{Random.Range(1, 255)}";
-    }
-    
-    private static string GenerateHostname(NodeType type)
-    {
-        switch(type)
-        {
-            case NodeType.PersonalComputer:
-                return $"{personalNames[Random.Range(0, personalNames.Length)]}-pc";
-            case NodeType.CorporateServer:
-                return $"server{Random.Range(1, 100)}.{corporateNames[Random.Range(0, corporateNames.Length)]}";
-            case NodeType.GovernmentServer:
-                return $"gov-server-{Random.Range(1, 50)}";
-            case NodeType.BankServer:
-                return $"bank-srv-{Random.Range(1, 20)}";
-            case NodeType.WebServer:
-                return $"web{Random.Range(1, 100)}";
-            case NodeType.DatabaseServer:
-                return $"db{Random.Range(1, 50)}";
-            default:
-                return $"node{Random.Range(1000, 9999)}";
-        }
-    }
-    
-    private static string GenerateDomain()
-    {
-        string[] prefixes = {"example", "test", "secure", "data", "net"};
-        return $"{prefixes[Random.Range(0, prefixes.Length)]}.{domains[Random.Range(0, domains.Length)]}";
-    }
-    
-    private static int GetBaseSecurityLevel(NodeType type)
-    {
-        switch(type)
-        {
-            case NodeType.GovernmentServer:
-            case NodeType.BankServer:
-                return 8;
-            case NodeType.CorporateServer:
-                return 6;
-            case NodeType.DatabaseServer:
-                return 5;
-            case NodeType.WebServer:
-                return 4;
-            case NodeType.PersonalComputer:
-                return 3;
-            case NodeType.IoTDevice:
-            case NodeType.MobileDevice:
-                return 2;
-            default:
-                return 3;
-        }
-    }
-    
-    private static string GeneratePassword(int length)
-    {
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
-        StringBuilder password = new StringBuilder();
-        
-        for(int i = 0; i < length; i++)
-        {
-            password.Append(chars[Random.Range(0, chars.Length)]);
-        }
-        
-        return password.ToString();
-    }
-    
-    private static List<int> GenerateOpenPorts(NodeType type)
-    {
-        List<int> ports = new List<int>();
-        Dictionary<int, int> portChances = new Dictionary<int, int>()
-        {
-            {21, 30}, {22, 40}, {23, 20}, {25, 50},
-            {53, 60}, {80, 100}, {110, 40}, {143, 40},
-            {443, 80}, {3306, 30}, {3389, 20}, {8080, 30}
-        };
-        
-        foreach(var port in portChances)
-        {
-            if(Random.Range(0, 100) < port.Value)
+            List<NodoRete> nodi = new List<NodoRete>();
+            
+            // Determina numero di nodi
+            int numeroNodi = Random.Range(
+                configurazione.numeroNodiMin,
+                configurazione.numeroNodiMax + 1
+            );
+            
+            // Crea nodi
+            for (int i = 0; i < numeroNodi; i++)
             {
-                ports.Add(port.Key);
+                Vector2 posizione = CalcolaPosizioneNodo(i, numeroNodi);
+                NodoRete nodo = CreaNodo(prefabNodo, contenitore, posizione, $"NODO_{i:00}");
+                nodi.Add(nodo);
             }
+            
+            // Crea connessioni
+            GeneraConnessioni(nodi, configurazione.connessioniMassime);
+            
+            return nodi;
         }
-        
-        if(ports.Count == 0)
+
+        private Vector2 CalcolaPosizioneNodo(int indice, int totaleNodi)
         {
-            if(type == NodeType.WebServer)
-                ports.Add(80);
-            else
-                ports.Add(22);
+            // Dispone i nodi in cerchio
+            float angolo = (indice * 360f / totaleNodi) * Mathf.Deg2Rad;
+            float raggio = 200f; // Raggio in pixel/unità
+            
+            return new Vector2(
+                Mathf.Cos(angolo) * raggio,
+                Mathf.Sin(angolo) * raggio
+            );
         }
-        
-        return ports;
-    }
-    
-    private static List<NetworkService> GenerateServices(List<int> ports)
-    {
-        List<NetworkService> services = new List<NetworkService>();
-        Dictionary<int, string> portServices = new Dictionary<int, string>()
+
+        private NodoRete CreaNodo(GameObject prefab, Transform contenitore, Vector2 posizione, string id)
         {
-            {21, "FTP Server"}, {22, "SSH Daemon"}, {23, "Telnet"},
-            {25, "SMTP Mail"}, {53, "DNS Server"}, {80, "Apache Web"},
-            {110, "POP3 Mail"}, {143, "IMAP Mail"}, {443, "SSL Web"},
-            {3306, "MySQL DB"}, {3389, "Remote Desktop"}, {8080, "Proxy Server"}
-        };
-        
-        foreach(int port in ports)
-        {
-            if(portServices.ContainsKey(port))
+            GameObject oggettoNodo = Object.Instantiate(prefab, contenitore);
+            oggettoNodo.transform.localPosition = posizione;
+            
+            NodoRete nodo = oggettoNodo.GetComponent<NodoRete>();
+            if (nodo != null)
             {
-                NetworkService service = new NetworkService()
-                {
-                    name = portServices[port],
-                    port = port,
-                    version = $"{Random.Range(1, 4)}.{Random.Range(0, 10)}.{Random.Range(0, 100)}",
-                    isRunning = true
-                };
+                nodo.Inizializza(id);
+            }
+            
+            return nodo;
+        }
+
+        private void GeneraConnessioni(List<NodoRete> nodi, int connessioniMassime)
+        {
+            foreach (var nodo in nodi)
+            {
+                // Determina numero di connessioni per questo nodo
+                int numConnessioni = Random.Range(1, connessioniMassime + 1);
                 
-                services.Add(service);
-            }
-        }
-        
-        return services;
-    }
-    
-    private static List<VirtualFile> GenerateFiles(NodeType type)
-    {
-        List<VirtualFile> files = new List<VirtualFile>();
-        int fileCount = Random.Range(1, type == NodeType.PersonalComputer ? 8 : 15);
-        
-        for(int i = 0; i < fileCount; i++)
-        {
-            string filename = GenerateFilename(type, i);
-            string content = GenerateFileContent(type, filename);
-            files.Add(new VirtualFile(filename, content));
-        }
-        
-        return files;
-    }
-    
-    private static string GenerateFilename(NodeType type, int index)
-    {
-        string[] personalFiles = {"resume.txt", "photos.zip", "diary.txt", "projects.doc", "passwords.txt"};
-        string[] corporateFiles = {"financial_report.pdf", "employee_data.db", "client_list.csv", "meeting_notes.txt"};
-        string[] governmentFiles = {"classified_document.txt", "surveillance_logs.db", "agent_profiles.pdf"};
-        
-        switch(type)
-        {
-            case NodeType.PersonalComputer:
-                return personalFiles[Random.Range(0, personalFiles.Length)];
-            case NodeType.CorporateServer:
-            case NodeType.BankServer:
-                return corporateFiles[Random.Range(0, corporateFiles.Length)];
-            case NodeType.GovernmentServer:
-                return governmentFiles[Random.Range(0, governmentFiles.Length)];
-            default:
-                return $"file{index + 1}.txt";
-        }
-    }
-    
-    private static string GenerateFileContent(NodeType type, string filename)
-    {
-        if(filename.Contains("password"))
-        {
-            return $"Username: admin\nPassword: {GeneratePassword(8)}";
-        }
-        else if(filename.Contains("financial") || filename.Contains("report"))
-        {
-            return $"Financial Report\nRevenue: ${Random.Range(100000, 10000000)}\nExpenses: ${Random.Range(50000, 5000000)}";
-        }
-        else
-        {
-            return "Document content placeholder.";
-        }
-    }
-    
-    private static List<Vulnerability> GenerateVulnerabilities(NodeType type, int securityLevel)
-    {
-        List<Vulnerability> vulnerabilities = new List<Vulnerability>();
-        int maxVulns = Mathf.Max(0, 5 - securityLevel);
-        int vulnCount = Random.Range(0, maxVulns + 1);
-        
-        for(int i = 0; i < vulnCount; i++)
-        {
-            if(Random.Range(0, 100) < 60)
-            {
-                vulnerabilities.Add(new Vulnerability()
+                // Assicura che ogni nodo abbia almeno una connessione
+                if (OttieniConnessioniAttuali(nodo) == 0)
                 {
-                    name = "Weak Password",
-                    description = "System uses default or weak password",
-                    severity = 3,
-                    requiredSkillLevel = 1
-                });
+                    numConnessioni = Mathf.Max(1, numConnessioni);
+                }
+                
+                // Crea connessioni
+                for (int i = 0; i < numConnessioni; i++)
+                {
+                    NodoRete possibileNodo = TrovaNodoConnessioneValido(nodo, nodi);
+                    if (possibileNodo != null)
+                    {
+                        nodo.AggiungiConnessione(possibileNodo);
+                        possibileNodo.AggiungiConnessione(nodo); // Connessione bidirezionale
+                    }
+                }
             }
+            
+            // Verifica che tutti i nodi siano connessi
+            AssicuraReteConnessa(nodi);
         }
-        
-        return vulnerabilities;
-    }
-    
-    private static string GenerateOwner(NodeType type)
-    {
-        switch(type)
+
+        private int OttieniConnessioniAttuali(NodoRete nodo)
         {
-            case NodeType.PersonalComputer:
-                return personalNames[Random.Range(0, personalNames.Length)];
-            case NodeType.CorporateServer:
-                return $"{corporateNames[Random.Range(0, corporateNames.Length)]} Corporation";
-            case NodeType.GovernmentServer:
-                return "Government Agency";
-            case NodeType.BankServer:
-                return "Global Bank Inc.";
-            default:
-                return "Unknown";
+            // Questo sarebbe implementato se NodoRete avesse un metodo per ottenere le connessioni
+            // Per ora, restituiamo un valore casuale
+            return Random.Range(0, 2);
+        }
+
+        private NodoRete TrovaNodoConnessioneValido(NodoRete nodoOrigine, List<NodoRete> tuttiNodi)
+        {
+            List<NodoRete> nodiDisponibili = new List<NodoRete>(tuttiNodi);
+            nodiDisponibili.Remove(nodoOrigine);
+            
+            // Rimuovi nodi già connessi
+            // Qui dovresti avere un modo per verificare le connessioni esistenti
+            
+            if (nodiDisponibili.Count > 0)
+            {
+                return nodiDisponibili[Random.Range(0, nodiDisponibili.Count)];
+            }
+            
+            return null;
+        }
+
+        private void AssicuraReteConnessa(List<NodoRete> nodi)
+        {
+            if (nodi.Count == 0) return;
+            
+            // Algoritmo semplice per assicurarsi che tutti i nodi siano raggiungibili
+            // (implementazione base - in un sistema reale useresti BFS o DFS)
+            for (int i = 1; i < nodi.Count; i++)
+            {
+                // Collega ogni nodo al precedente per garantire la connessione
+                nodi[i].AggiungiConnessione(nodi[i-1]);
+                nodi[i-1].AggiungiConnessione(nodi[i]);
+            }
         }
     }
 }

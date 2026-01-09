@@ -106,6 +106,13 @@ public class DialogueSystem : MonoBehaviour
         List<DialogueLine> lines = new List<DialogueLine> { singleLine };
         StartDialogue(lines);
     }
+
+    private Queue<string> dialogueLines = new Queue<string>();
+    public void StartDialogue(string[] lines) {
+        dialogueLines.Clear();
+        foreach(string line in lines) dialogueLines.Enqueue(line);
+        DisplayNextLine();
+    }
     
     private void DisplayNextLine()
     {
@@ -279,4 +286,5 @@ public class DialogueSystem : MonoBehaviour
     {
         ShowMessage("ANONYMOUS", message, 3f);
     }
+
 }

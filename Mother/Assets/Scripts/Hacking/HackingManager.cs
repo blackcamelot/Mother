@@ -1,6 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
 
+private NetworkNode currentNode;
+private int currentAttempts;
+private float remainingTime;
+
 public class HackingManager : MonoBehaviour
 {
     public TerminalController terminal;
@@ -228,6 +232,27 @@ public class HackingManager : MonoBehaviour
             terminal.PrintLine(file.name);
         }
     }
+
+
+    public void StartHackingPuzzle(string nodeId) {
+        currentNode = NetworkNodeGenerator.Instance.GetNode(nodeId);
+        currentAttempts = 0;
+        remainingTime = 60f;
+        TerminalUI.Instance.AddMessage($"Hacking {nodeId}... Usa 'solve [codice]'");
+    }
+    public bool AttemptHack(string solution) {
+        currentAttempts++;
+        if(solution == currentNode.securityCode) {
+            TerminalUI.Instance.AddMessage("ACCESSO RIUSCITO!");
+            MissionManager.Instance.CompleteMission(currentNode.id);
+            return true;
+        }
+        TerminalUI.Instance.AddMessage($"Codice errato. Tentativi: {currentAttempts}/3");
+        return false;
+    }
+
+
+    
     
     private void ReadFile(string filename)
     {
@@ -265,4 +290,5 @@ public class HackingManager : MonoBehaviour
             }
         }
     }
+
 }

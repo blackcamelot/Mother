@@ -3,6 +3,18 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Linq;
 
+switch(command) {
+    case "missions": MissionManager.Instance.ListMissions(); break;
+    case "start": MissionManager.Instance.StartMission(parts[1]); break;
+    case "solve": HackingManager.Instance.AttemptHack(parts[1]); break;
+    case "credits": EconomyUI.Instance.ShowCredits(); break;
+    case "market": BlackMarket.Instance.ShowMarket(); break;
+    case "save": SaveSystem.Instance.SaveGame(); break;
+    case "load": SaveSystem.Instance.LoadGame(); break;
+    case "clear": TerminalUI.Instance.ClearConsole(); break;
+    case "help": ShowHelp(); break;
+}
+
 public class CommandParser : MonoBehaviour
 {
     [System.Serializable]
@@ -265,4 +277,5 @@ public class ParsedCommand
     {
         return arguments.Contains(arg);
     }
+
 }

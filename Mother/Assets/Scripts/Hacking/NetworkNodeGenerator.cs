@@ -245,6 +245,17 @@ public static class NetworkNodeGenerator
         
         return vulnerabilities;
     }
+
+    public NetworkNode GetNode(string nodeId) {
+        return new NetworkNode {
+            id = nodeId,
+            securityCode = GenerateRandomCode(),
+            difficultyLevel = 1,
+            isFirewallActive = true
+        };
+    }
+
+    
     
     private static string GenerateOwner(NodeType type)
     {
@@ -262,4 +273,5 @@ public static class NetworkNodeGenerator
                 return "Unknown";
         }
     }
+
 }

@@ -163,6 +163,14 @@ public class MobileKeyboardController : MonoBehaviour, IPointerClickHandler
         
         targetInputField = newInputField;
     }
+
+    public void OnKeyPressed(string key) {
+        if(key == "Enter") {
+            TerminalUI.Instance.ProcessInput();
+        } else {
+            TerminalUI.Instance.AppendToInput(key);
+        }
+    }
     
     public void SubmitText()
     {
@@ -174,4 +182,5 @@ public class MobileKeyboardController : MonoBehaviour, IPointerClickHandler
         
         CloseKeyboard();
     }
+
 }

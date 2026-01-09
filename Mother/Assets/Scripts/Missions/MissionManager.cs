@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
+
 [System.Serializable]
 public class Mission
 {
@@ -8,6 +9,8 @@ public class Mission
     public string title;
     public string description;
     public string targetIP;
+    public string targetNodeId;
+    public int rewardCredits;
     public int reward;
     public int difficulty;
     public bool isCompleted;
@@ -24,6 +27,8 @@ public class Mission
         Surveillance
     }
 }
+
+public List<Mission> availableMissions = new List<Mission>();
 
 [System.Serializable]
 public class MissionObjective
@@ -89,36 +94,21 @@ public class MissionManager : MonoBehaviour
         GenerateNewMissions();
     }
     
-    public void GenerateNewMissions()
-    {
+    public void GenerateDailyMissions() {
         availableMissions.Clear();
-        
-        int missionCount = Random.Range(3, 6);
-        for(int i = 0; i < missionCount; i++)
-        {
-            Mission mission = new Mission()
-            {
-                id = $"MISSION_{System.Guid.NewGuid().ToString().Substring(0, 8)}",
-                title = missionTitles[Random.Range(0, missionTitles.Length)],
-                description = string.Format(
-                    missionDescriptions[Random.Range(0, missionDescriptions.Length)],
-                    GenerateRandomCompany(),
-                    Random.Range(1000, 10000)
-                ),
-                targetIP = GenerateRandomIP(),
-                reward = Random.Range(500, 5000),
-                difficulty = Random.Range(1, 10),
-                type = (Mission.MissionType)Random.Range(0, 6),
-                isCompleted = false,
-                objectives = GenerateObjectives()
-            };
-            
-            availableMissions.Add(mission);
-        }
-        
-        if(uiManager != null)
-        {
-            uiManager.RefreshMissions();
+        availableMissions.Add(new Mission {
+            id = "hack_001",
+            title = "Penetrazione Rete Primaria",
+            description = "Accedi al nodo TITAN-01",
+            targetNodeId = "TITAN-01",
+            rewardCredits = 500,
+            isCompleted = false
+        });
+    }
+    public void StartMission(string missionId) {
+        Mission mission = availableMissions.Find(m => m.id == missionId);
+        if(mission != null && !mission.isCompleted) {
+            HackingManager.Instance.StartHackingPuzzle(mission.targetNodeId);
         }
     }
     
@@ -281,4 +271,5 @@ public class MissionManager : MonoBehaviour
         }
         return total;
     }
+
 }

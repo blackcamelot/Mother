@@ -2,6 +2,8 @@ using UnityEngine;
 using System.Collections.Generic;
 using System;
 
+private bool isDestroying = false; 
+
 public class AudioManager : MonoBehaviour
 {
     public static AudioManager Instance { get; private set; }
@@ -83,8 +85,8 @@ public class AudioManager : MonoBehaviour
     }
 
     public void Play(string soundName)
-    {
-        if (!soundDictionary.TryGetValue(soundName, out Sound sound))
+   {
+      if (isDestroying) return; // Previene azioni durante la distruzione
         {
             Debug.LogWarning($"AudioManager: Sound non trovato - {soundName}");
             return;
@@ -147,16 +149,16 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    public void ResumeAll()
-    {
-        foreach (Sound sound in soundDictionary.Values)
-        {
-            if (sound.source != null && !sound.source.isPlaying)
-            {
-                sound.source.UnPause();
-            }
-        }
-    }
+   public void ResumeAll()
+  {
+      foreach (Sound sound in soundDictionary.Values)
+      {
+          if (sound.source != null && !sound.source.isPlaying)
+          {
+              sound.source.Play(); // Sostituisce UnPause()
+          }
+      }
+  }
 
     public void StopAll()
     {
@@ -170,11 +172,13 @@ public class AudioManager : MonoBehaviour
     }
 
     private void OnDestroy()
-    {
-        if (Instance == this)
-        {
-            StopAll();
-            Instance = null;
-        }
-    }
+  {
+      isDestroying = true; // Imposta il flag
+      if (Instance == this)
+      {
+          StopAll();
+          Instance = null;
+      }
+  }
+
 }

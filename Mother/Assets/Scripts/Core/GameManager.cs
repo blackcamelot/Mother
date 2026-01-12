@@ -59,11 +59,40 @@ public class GameManager : MonoBehaviour
         Application.targetFrameRate = targetFrameRate;
         QualitySettings.vSyncCount = vSyncEnabled ? 1 : 0;
         
+        ApplyHardwareSpecificSettings();
+
         // Carica high score
         highScore = PlayerPrefs.GetInt(HIGH_SCORE_KEY, 0);
         
         // Stato iniziale
         ChangeState(GameState.MainMenu);
+    }
+
+    private void ApplyHardwareSpecificSettings()
+    {
+        // Intel HD Graphics detection
+        string gpu = SystemInfo.graphicsDeviceName.ToLower();
+        int vendorId = SystemInfo.graphicsDeviceVendorID;
+    
+        // Intel = vendor ID 0x8086
+        if (vendorId == 0x8086 && (gpu.Contains("hd") || gpu.Contains("graphics")))
+        {
+            Debug.LogWarning($"Intel integrated GPU detected: {SystemInfo.graphicsDeviceName}");
+        
+            // Override delle impostazioni per compatibilità
+            Application.targetFrameRate = 60;
+            QualitySettings.vSyncCount = 0;
+        
+            // Solo se siamo nel primo avvio o nel menu principale
+            if (currentState == GameState.Initializing || currentState == GameState.MainMenu)
+            {
+                Screen.SetResolution(1280, 720, false);
+            }
+        
+            // Ottimizzazioni aggiuntive
+            QualitySettings.shadowDistance = 20f;
+            QualitySettings.pixelLightCount = 2;
+        }
     }
     
     private void Update()

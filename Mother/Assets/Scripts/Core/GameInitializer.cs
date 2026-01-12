@@ -67,6 +67,11 @@ public class GameInitializer : MonoBehaviour
     {
         try
         {
+            
+             // INIZIALIZZAZIONE GRAFICA - AGGIUNGI QUI
+            InitializeGraphicsSettings();            
+            
+            
             // Inizializza AudioManager se presente
             AudioManager audioManager = FindObjectOfType<AudioManager>();
             if (audioManager == null)
@@ -84,6 +89,24 @@ public class GameInitializer : MonoBehaviour
         {
             Debug.LogError($"Errore inizializzazione sistemi: {e.Message}");
             throw;
+        }
+    }
+
+    private void InitializeGraphicsSettings()
+    {
+        // Rileva GPU Intel HD
+        string gpuName = SystemInfo.graphicsDeviceName.ToLower();
+        bool isIntelHD = gpuName.Contains("intel") && 
+                        (gpuName.Contains("hd") || gpuName.Contains("graphics"));
+    
+        if (isIntelHD)
+        {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = 60;
+            Screen.SetResolution(1280, 720, false);
+        
+            Debug.Log($"Intel HD Graphics detected: {SystemInfo.graphicsDeviceName}");
+            Debug.Log("Applied compatibility settings: 720p, 60 FPS, VSync off");
         }
     }
 
@@ -122,16 +145,16 @@ public class GameInitializer : MonoBehaviour
     }
 
     private bool SceneExists(string sceneName)
-   {
+    {
        // Controlla in tutte le scene in build (funziona anche in build)
-       for (int i = 0; i < SceneManager.sceneCountInBuildSettings; i++)
-       {
-           string scenePath = SceneUtility.GetScenePathByBuildIndex(i);
-           if (System.IO.Path.GetFileNameWithoutExtension(scenePath) == sceneName)
-               return true;
-       }
-       return false;
-   }
+        for (int i = 0; i < SceneManager.sceneCountInBuildSettings; i++)
+        {
+            string scenePath = SceneUtility.GetScenePathByBuildIndex(i);
+            if (System.IO.Path.GetFileNameWithoutExtension(scenePath) == sceneName)
+                return true;
+        }
+        return false;
+    }
 
     private void UpdateProgress(float progress, string message)
     {
@@ -142,21 +165,21 @@ public class GameInitializer : MonoBehaviour
             progressText.text = $"{message} {(progress * 100):F0}%";
     }
 
-   private void LoadFirstScene()
-   {
-       if (loadingScreen != null)
-           loadingScreen.SetActive(false);
+    private void LoadFirstScene()
+    {
+        if (loadingScreen != null)
+            loadingScreen.SetActive(false);
     
-       try 
-       {
-           SceneManager.LoadScene(firstSceneName);
-       } 
-       catch (System.Exception e) 
-       {
-           Debug.LogError($"Impossibile caricare la scena '{firstSceneName}': {e.Message}");
+        try 
+        {
+            SceneManager.LoadScene(firstSceneName);
+        } 
+        catch (System.Exception e) 
+        {
+            Debug.LogError($"Impossibile caricare la scena '{firstSceneName}': {e.Message}");
            // Qui potresti caricare una scena di fallback o mostrare un messaggio all'utente
-      }
-   }
+        }
+    }
 
     // Metodo pubblico per riavviare l'inizializzazione
     public void RestartInitialization()

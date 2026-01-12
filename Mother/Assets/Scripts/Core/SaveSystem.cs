@@ -9,6 +9,12 @@ using System.Linq;
 
 // Strutture per serializzazione Dictionary
 [System.Serializable]
+public class BlackMarketData
+{
+    public Dictionary<string, int> purchasedItems; // itemName -> quantity
+    public Dictionary<string, float> itemDemand; // itemName -> demandFactor
+    public DateTime lastMarketUpdate;
+}
 public class SerializableDictionary<TKey, TValue>
 {
     public List<TKey> keys = new List<TKey>();
@@ -44,6 +50,7 @@ public class GameData
     public bool[] unlockedLevels;
     public int totalPlayTime;
     public DateTime lastSaveTime;
+    public BlackMarketData blackMarketData;
     
     // Dizionari serializzabili
     public SerializableDictionary<string, bool> serializableAchievements;
@@ -732,4 +739,5 @@ public class SaveSystem : MonoBehaviour
         }
     }
     #endif
+
 }

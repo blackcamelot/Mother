@@ -172,13 +172,14 @@ public class AudioManager : MonoBehaviour
     }
 
     private void OnDestroy()
-  {
-      isDestroying = true; // Imposta il flag
-      if (Instance == this)
-      {
-          StopAll();
-          Instance = null;
-      }
-  }
+   {
+       isDestroying = true; // Imposta il flag
+       if (Instance == this)
+       {
+           StopAll();
+           Instance = null;
+       }
+   }
 
-}
+ }
+

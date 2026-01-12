@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Text;
 
 public interface ICommandHandler
 {
@@ -152,37 +153,29 @@ public class ParsedCommand
     }
     
     private List<string> Tokenize(string input)
+{
+    var tokens = new List<string>();
+    var currentToken = new StringBuilder();
+    bool inQuotes = false;
+    char quoteChar = '\0';
+    bool escapeNext = false;
+    
+    for (int i = 0; i < input.Length; i++)
     {
-        var tokens = new List<string>();
-        var currentToken = new StringBuilder();
-        bool inQuotes = false;
-        char quoteChar = '\0';
+        char c = input[i];
         
-        for (int i = 0; i < input.Length; i++)
+        if (escapeNext)
         {
-            char c = input[i];
-            
-            if (c == '\\' && i + 1 < input.Length)
-            {
-                // Escape character
-                currentToken.Append(input[++i]);
-            }
-            else if ((c == '"' || c == '\'') && (inQuotes == false || c == quoteChar))
-            {
-                if (!inQuotes)
-                {
-                    inQuotes = true;
-                    quoteChar = c;
-                }
-                else
-                {
-                    inQuotes = false;
-                    if (currentToken.Length > 0)
-                    {
-                        tokens.Add(currentToken.ToString());
-                        currentToken.Clear();
-                    }
-                }
+            currentToken.Append(c);
+            escapeNext = false;
+            continue;
+        }
+        
+        if (c == '\\')
+        {
+            escapeNext = true;
+            continue;
+        }
             }
             else if (c == ' ' && !inQuotes)
             {
@@ -191,16 +184,21 @@ public class ParsedCommand
                     tokens.Add(currentToken.ToString());
                     currentToken.Clear();
                 }
+                }
+                else
+                {
+                    currentToken.Append(c);
+                }
             }
-            else
-            {
-                currentToken.Append(c);
-            }
-        }
         
+        if (inQuotes)
+        {
+            Debug.LogWarning($"CommandParser: Unclosed quotes in command: {input}");
+        }
+    
         if (currentToken.Length > 0)
             tokens.Add(currentToken.ToString());
-            
+        
         return tokens;
     }
     
@@ -248,6 +246,11 @@ public class CommandParser : MonoBehaviour
     {
         _playerProgression = FindObjectOfType<PlayerProgression>();
         _networkManager = FindObjectOfType<NetworkManager>();
+    
+        if (_playerProgression == null)
+            Debug.LogWarning("CommandParser: PlayerProgression not found in scene");
+        if (_networkManager == null)
+            Debug.LogWarning("CommandParser: NetworkManager not found in scene");
         
         // Register default handlers
         foreach (var config in _defaultHandlers)
@@ -267,10 +270,31 @@ public class CommandParser : MonoBehaviour
     
     private ICommandHandler CreateHandler(CommandHandlerConfig config)
     {
-        // Factory method for creating handlers from config
-        // Implementation depends on your serialization approach
-        return null;
-    }
+    try
+        {    
+           // Crea istanza del tipo specificato
+            Type handlerType = Type.GetType(config.TypeName);
+            if (handlerType == null)
+            {
+                Debug.LogError($"CommandParser: Type not found: {config.TypeName}");
+                return null;
+            }
+        
+            var handler = Activator.CreateInstance(handlerType) as ICommandHandler;
+            if (handler == null)
+            {
+                Debug.LogError($"CommandParser: Type {config.TypeName} doesn't implement ICommandHandler");
+                return null;
+            } 
+        
+            return handler;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"CommandParser: Error creating handler {config.CommandName}: {e.Message}");
+            return null;
+        }
+    }   
     
     private void RegisterHandler<T>() where T : ICommandHandler, new()
     {
@@ -293,25 +317,26 @@ public class CommandParser : MonoBehaviour
     }
     
     public CommandResult Execute(string input)
-    {
+    {   
         var parsed = Parse(input);
-        
-        if (parsed.Handler == null)
-            return CommandResult.ErrorResult($"Unknown command: {parsed.Command}");
-        
-        // Validate command
-        var validation = parsed.Handler.Validate(parsed);
-        OnCommandValidated?.Invoke(parsed, validation);
-        
-        if (!validation.IsValid)
-            return CommandResult.ErrorResult(validation.ErrorMessage);
-        
-        // Execute command
-        var result = parsed.Handler.Execute(parsed);
-        OnCommandExecuted?.Invoke(result);
-        
-        return result;
-    }
+    
+        if (parsed.Handler.RequiresConnection && _networkManager != null && 
+            !_networkManager.IsConnected())
+        {
+            return CommandResult.ErrorResult("Network connection required for this command");
+        }
+    
+        // Verifica skill player
+        if (_playerProgression != null && parsed.Handler.RequiredSkill > 0)
+        {
+            int playerSkill = _playerProgression.GetHackingSkill(); // Metodo da implementare
+            if (playerSkill < parsed.Handler.RequiredSkill)
+            {
+                return CommandResult.ErrorResult(
+                    $"Insufficient skill. Required: {parsed.Handler.RequiredSkill}, " +
+                    $"Your skill: {playerSkill}");
+            }
+        }
     
     public List<string> GetSuggestions(string partial)
     {
@@ -325,11 +350,12 @@ public class CommandParser : MonoBehaviour
     {
         if (filter.HasValue)
             return _registry.GetHandlersByCategory(filter.Value);
-        
-        return _registry.GetHandlersByCategory(CommandCategory.System)
-            .Concat(_registry.GetHandlersByCategory(CommandCategory.File))
-            .Concat(_registry.GetHandlersByCategory(CommandCategory.Network))
-            .Concat(_registry.GetHandlersByCategory(CommandCategory.Hacking));
+    
+    // Restituisce TUTTE le categorie
+        return Enum.GetValues(typeof(CommandCategory))
+                    .Cast<CommandCategory>()
+                    .SelectMany(category => _registry.GetHandlersByCategory(category))
+                    .Distinct();
     }
     
     public void RegisterCustomHandler(ICommandHandler handler)
@@ -422,7 +448,7 @@ public class ClearCommandHandler : ICommandHandler
 }
 
 [System.Serializable]
-public class CommandHandlerConfig
+public class CommandHandlerConfig : ICommandHandler
 {
     public string TypeName;
     public string CommandName;
@@ -431,5 +457,25 @@ public class CommandHandlerConfig
     public string[] Aliases;
     public CommandCategory Category;
     public int RequiredSkill;
-    public bool RequiresConnection;
+    public bool RequiresConnection { get; set; }
+
+    // Implementazione interfaccia
+    string ICommandHandler.CommandName => CommandName;
+    string ICommandHandler.Description => Description;
+    string ICommandHandler.Syntax => Syntax;
+    string[] ICommandHandler.Aliases => Aliases ?? Array.Empty<string>();
+    CommandCategory ICommandHandler.Category => Category;
+    int ICommandHandler.RequiredSkill => RequiredSkill;
+    bool ICommandHandler.RequiresConnection => RequiresConnection;
+
+    public CommandResult Execute(ParsedCommand command)
+    {
+        // Implementazione di base - dovrebbe essere sovrascritta dalle classi specifiche
+        return CommandResult.ErrorResult($"Handler not fully implemented for {CommandName}");
+    }
+
+    public ValidationResult Validate(ParsedCommand command)
+    {
+        return ValidationResult.Valid;
+    }
 }

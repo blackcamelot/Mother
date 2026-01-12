@@ -80,19 +80,16 @@ public class GameManager : MonoBehaviour
     
     private void HandleGlobalInput()
     {
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            switch (currentState)
-            {
-                case GameState.Playing:
-                    PauseGame();
-                    break;
-                case GameState.Paused:
-                    ResumeGame();
-                    break;
-            }
-        }
-    }
+       if (Input.GetKeyDown(KeyCode.Escape))
+       {
+           switch (currentState)
+           {
+               case GameState.Playing: PauseGame(); break;
+               case GameState.Paused: ResumeGame(); break;
+               case GameState.GameOver: ReturnToMainMenu(); break; // Nuova funzionalità
+           }
+       }
+    }  
     
     public void ChangeState(GameState newState)
     {
@@ -111,19 +108,13 @@ public class GameManager : MonoBehaviour
     }
     
     private void HandleStateTransition(GameState fromState, GameState toState)
-    {
-        switch (toState)
-        {
+   {
+       switch (toState)
+       {
             case GameState.Playing:
-                if (fromState == GameState.Paused)
-                {
-                    Time.timeScale = 1f;
-                    OnGameResumed?.Invoke();
-                }
-                else
-                {
-                    OnGameStarted?.Invoke();
-                }
+                Time.timeScale = 1f; // IMPORTANTE: Imposta sempre a 1
+                if (fromState == GameState.Paused) OnGameResumed?.Invoke();
+                else OnGameStarted?.Invoke();
                 break;
                 
             case GameState.Paused:
@@ -175,7 +166,6 @@ public class GameManager : MonoBehaviour
     public void AddScore(int points)
     {
         if (currentState != GameState.Playing) return;
-        
         currentScore += points;
         if (currentScore > highScore)
         {
@@ -196,6 +186,18 @@ public class GameManager : MonoBehaviour
             PlayerPrefs.Save();
         }
     }
+
+    private void SaveHighScore()
+   {
+       int savedHighScore = PlayerPrefs.GetInt(HIGH_SCORE_KEY, 0);
+       // Salva solo se il punteggio corrente è MAGGIORE di quello salvato
+       if (currentScore > savedHighScore)
+       {
+           PlayerPrefs.SetInt(HIGH_SCORE_KEY, currentScore);
+           PlayerPrefs.Save();
+           highScore = currentScore; // Aggiorna la variabile locale solo dopo il salvataggio
+       }
+   }
     
     private void ResetGameData()
     {
@@ -235,4 +237,5 @@ public class GameManager : MonoBehaviour
         if (targetFrameRate > 144) targetFrameRate = 144;
     }
     #endif
+
 }

@@ -122,18 +122,16 @@ public class GameInitializer : MonoBehaviour
     }
 
     private bool SceneExists(string sceneName)
-    {
-        #if UNITY_EDITOR
-        foreach (UnityEditor.EditorBuildSettingsScene scene in UnityEditor.EditorBuildSettings.scenes)
-        {
-            if (scene.path.Contains(sceneName))
-            {
-                return true;
-            }
-        }
-        #endif
-        return true; // Per build, assumi che esista
-    }
+   {
+       // Controlla in tutte le scene in build (funziona anche in build)
+       for (int i = 0; i < SceneManager.sceneCountInBuildSettings; i++)
+       {
+           string scenePath = SceneUtility.GetScenePathByBuildIndex(i);
+           if (System.IO.Path.GetFileNameWithoutExtension(scenePath) == sceneName)
+               return true;
+       }
+       return false;
+   }
 
     private void UpdateProgress(float progress, string message)
     {
@@ -144,13 +142,21 @@ public class GameInitializer : MonoBehaviour
             progressText.text = $"{message} {(progress * 100):F0}%";
     }
 
-    private void LoadFirstScene()
-    {
-        if (loadingScreen != null)
-            loadingScreen.SetActive(false);
-        
-        SceneManager.LoadScene(firstSceneName);
-    }
+   private void LoadFirstScene()
+   {
+       if (loadingScreen != null)
+           loadingScreen.SetActive(false);
+    
+       try 
+       {
+           SceneManager.LoadScene(firstSceneName);
+       } 
+       catch (System.Exception e) 
+       {
+           Debug.LogError($"Impossibile caricare la scena '{firstSceneName}': {e.Message}");
+           // Qui potresti caricare una scena di fallback o mostrare un messaggio all'utente
+      }
+   }
 
     // Metodo pubblico per riavviare l'inizializzazione
     public void RestartInitialization()
@@ -158,4 +164,5 @@ public class GameInitializer : MonoBehaviour
         StopAllCoroutines();
         StartCoroutine(InitializeGameRoutine());
     }
+
 }
